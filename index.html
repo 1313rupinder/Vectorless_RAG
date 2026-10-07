@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Vectorless RAG — Tree Navigator</title>
+<style>
+  :root {
+    --bg: #0f1216;
+    --panel: #161b21;
+    --border: #2a323c;
+    --text: #dfe4ea;
+    --muted: #8b96a3;
+    --accent: #5fd0a8;
+    --accent-dim: #2e5c4c;
+    --hop: #e8b563;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Consolas', 'SFMono-Regular', Menlo, monospace;
+    display: flex;
+    justify-content: center;
+    padding: 48px 20px;
+  }
+  .wrap { width: 100%; max-width: 760px; }
+
+  .title-row { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+  h1 { font-size: 20px; margin: 0; font-weight: 600; letter-spacing: 0.02em; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 32px; }
+
+  .ask-box {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+  input[type=text] {
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 14px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 14px;
+    outline: none;
+  }
+  input[type=text]:focus { border-color: var(--accent-dim); }
+  button {
+    background: var(--accent);
+    color: #08110d;
+    border: none;
+    padding: 0 20px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  button:hover { filter: brightness(1.08); }
+  button:disabled { opacity: 0.5; cursor: default; }
+
+  .trail {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+    min-height: 28px;
+  }
+  .node {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 12.5px;
+    color: var(--muted);
+    opacity: 0;
+    transform: translateY(4px);
+    animation: rise 0.35s forwards;
+  }
+  .node.doc { color: var(--text); border-color: var(--accent-dim); }
+  .node.chapter { color: var(--hop); }
+  .node.sub { color: var(--accent); }
+  .arrow { color: var(--border); font-size: 13px; }
+  @keyframes rise { to { opacity: 1; transform: translateY(0); } }
+
+  .answer-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    line-height: 1.6;
+    font-size: 14.5px;
+    min-height: 60px;
+    white-space: pre-wrap;
+  }
+  .answer-panel.empty { color: var(--muted); font-style: italic; }
+  .answer-panel.err { border-color: #7a3b3b; color: #e2a1a1; }
+
+  .hint { color: var(--muted); font-size: 12px; margin-top: 10px; }
+  .examples { margin-top: 24px; }
+  .examples .label { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+  .chip {
+    display: inline-block;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 5px 11px;
+    border-radius: 14px;
+    font-size: 12px;
+    margin: 0 6px 6px 0;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .chip:hover { border-color: var(--accent-dim); color: var(--text); }
+
+  .dots::after { content: ''; animation: dots 1.2s steps(4, end) infinite; }
+  @keyframes dots { 0%,20%{content:'.'} 40%{content:'..'} 60%,100%{content:'...'} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="title-row">
+    <h1>Vectorless RAG</h1>
+  </div>
+  <div></div>
+
+  <div class="ask-box">
+    <input type="text" id="question" placeholder="Ask something about the manual..." autofocus>
+    <button id="askBtn" onclick="ask()">Ask</button>
+  </div>
+
+  <div class="trail" id="trail"></div>
+
+  <div class="answer-panel empty" id="answer">Answers will appear here once you ask a question.</div>
+
+
+</div>
+
+<script>
+function fill(q) {
+  document.getElementById('question').value = q;
+  ask();
+}
+
+async function ask() {
+  const input = document.getElementById('question');
+  const question = input.value.trim();
+  if (!question) return;
+
+  const btn = document.getElementById('askBtn');
+  const trail = document.getElementById('trail');
+  const answerBox = document.getElementById('answer');
+
+  btn.disabled = true;
+  trail.innerHTML = ''; 
+  answerBox.className = 'answer-panel empty';
+  answerBox.innerHTML = 'Navigating<span class="dots"></span>';
+
+  try {
+    const res = await fetch('/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      answerBox.className = 'answer-panel err';
+      answerBox.textContent = 'Error: ' + (data.error || 'unknown error');
+      return;
+    }
+
+trail.innerHTML =
+  '<span class="node doc">' + data.hop0_document + '</span>' +
+  '<span class="arrow">→</span>' +
+  '<span class="node chapter">' + data.hop1_chapter + '</span>' +
+  '<span class="arrow">→</span>' +
+  '<span class="node sub">' + data.hop2_subsection + '</span>';
+
+    answerBox.className = 'answer-panel';
+    answerBox.textContent = data.answer;
+
+  } catch (e) {
+    answerBox.className = 'answer-panel err';
+    answerBox.textContent = 'Could not reach the server. Is app.py running?';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+document.getElementById('question').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') ask();
+});
+</script>
+</body>
+</html>
