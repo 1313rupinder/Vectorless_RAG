@@ -154,7 +154,7 @@ GROQ_API_KEY = "gsk_your_key_here"
 
 Streamlit exposes top-level secrets as environment variables, so the app reads the key the same way it does locally.
 
-Free apps go to sleep after about 12 hours without visitors. If the demo shows a sleep screen, click the wake-up button and wait up to a minute or two.
+**Free apps go to sleep after about 12 hours without visitors. If the demo shows a sleep screen, click the wake-up button and wait up to a minute or two.**
 
 ## What Documents Work Best
 
