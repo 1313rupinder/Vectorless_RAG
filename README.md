@@ -4,7 +4,7 @@
 
 [![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](YOUR-LIVE-LINK)
 
-**Live demo:** YOUR-LIVE-LINK
+**Live demo:** https://vectorlessrag-u3yjp3dwwvpwwzvhkexjhs.streamlit.app/
 
 A from-scratch implementation of tree-based retrieval-augmented generation, built to understand the idea behind tools like PageIndex, where an LLM reasons its way through a document's structure instead of comparing vector similarity.
 
